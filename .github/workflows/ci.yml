@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # The template pins no dependency versions, so a green run goes stale on its
+  # own as crates release.
+  schedule:
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  # Generate each shape the wizard can produce, then run on it exactly what the
+  # generated project's own CI would.
+  generate:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: workspace-server
+            answers: >-
+              -d layout=workspace -d server=true -d license=MIT
+              -d ci=github -d docker=true -d githooks=true -d claude=true
+          - name: single-cli
+            answers: >-
+              -d layout=single -d server=false -d license=none
+              -d ci=gitlab -d docker=false -d githooks=false -d claude=false
+    name: generate (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: cargo-bins/cargo-binstall@main
+      - run: cargo binstall --no-confirm cargo-generate
+
+      - name: Generate
+        run: |
+          mkdir -p /tmp/out
+          cd /tmp/out
+          cargo generate --path "$GITHUB_WORKSPACE" template \
+            --name probe --silent --vcs none \
+            -d description="Probe" ${{ matrix.answers }}
+
+      # After generation, so there is a manifest to key the cache on.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: /tmp/out/probe
+          key: ${{ matrix.name }}
+          cache-on-failure: "true"
+
+      # No `--locked`: a freshly generated project has no lockfile yet.
+      - name: Check
+        working-directory: /tmp/out/probe
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          cargo test --workspace --all-features
+          cargo doc --workspace --no-deps --all-features
+
+  # The Dockerfile is the part nothing else exercises, and the part that rots
+  # quietly.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: cargo-bins/cargo-binstall@main
+      - run: cargo binstall --no-confirm cargo-generate
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Generate
+        run: |
+          mkdir -p /tmp/img
+          cd /tmp/img
+          cargo generate --path "$GITHUB_WORKSPACE" template \
+            --name probe --silent --vcs none \
+            -d description="Probe" -d layout=workspace -d server=true \
+            -d license=MIT -d ci=github -d docker=true -d githooks=true -d claude=true
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: /tmp/img/probe
+          push: false
+          build-args: GIT_COMMIT=ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

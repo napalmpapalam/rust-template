@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+# One run per ref: a new push cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Bump in one place. Keep it in step with `rust-version` in Cargo.toml and
+  # the Dockerfile's RUST_VERSION.
+  RUST_VERSION: "1.90"
+  # Incremental artifacts are never reused across runners; they only bloat the
+  # cache.
+  CARGO_INCREMENTAL: "0"
+
+# All four checks run concurrently, so wall-clock is the slowest single check
+# rather than their sum.
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+      # No cache: rustfmt compiles nothing.
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: clippy
+      # Caches ~/.cargo and target/, keyed on the job, the toolchain and the
+      # lockfile. Saved even when the job fails, so a red run still leaves the
+      # next one warm.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+  doc:
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      # `missing_docs` warns and this turns warnings into errors, so every
+      # public item needs a doc comment.
+      - run: cargo doc --workspace --no-deps --all-features --locked
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      - run: cargo test --workspace --all-features --locked

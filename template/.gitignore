@@ -1,0 +1,19 @@
+# Rust / Cargo build output
+/target
+**/*.rs.bk
+*.pdb
+
+# Env / local config (never commit secrets)
+.env
+.env.*
+config.yaml
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+{% if claude %}
+.claude/*
+!.claude/settings.json
+{% endif %}

@@ -1,0 +1,37 @@
+# Example configuration for {{project-name}}.
+#
+# Copy to ./config.yaml, or pass it with `--config ./config.yaml`, or point at
+# it with the {{crate_name | upcase}}_CONFIG env var.
+#
+# Env var overrides use the prefix {{crate_name | upcase}}__ with __ as the
+# nesting separator:
+#   {{crate_name | upcase}}__LOG__FORMAT=json
+{% if server %}#   {{crate_name | upcase}}__SERVER__BIND_ADDR=0.0.0.0:9000
+{% endif %}#
+# Every value below is a default, so an empty file boots. Blocks left commented
+# out are shown for reference; uncomment to override.
+#
+# Tip: `{{project-name}} config` prints the effective merged configuration.
+
+# The identity this process reports as, in logs and to its peers.
+# Lowercase letters, digits and `-` only — it reaches log fields, metric labels
+# and URLs alike, and anything else is refused at boot.
+name: "{{project-name}}"
+
+log:
+  # Tracing filter directives.
+  #
+  # Examples:
+  #   "info"
+  #   "info,{{crate_name}}=debug"
+  #
+  # Valid levels: trace, debug, info, warn, error, off.
+  filter: "info"
+
+  # "text" for humans, "json" for log collectors.
+  # format: "text"
+{% if server %}
+server:
+  # Address and port the HTTP server binds.
+  # bind_addr: "0.0.0.0:8080"
+{% endif %}

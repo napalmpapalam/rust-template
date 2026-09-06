@@ -1,0 +1,10 @@
+#!/bin/sh
+# Pre-commit checks: fast, local, the same as the CI lint jobs.
+# Install once with `git config core.hooksPath .githooks`.
+set -e
+
+echo "pre-commit: cargo fmt --check"
+cargo fmt --all -- --check
+
+echo "pre-commit: cargo clippy"
+cargo clippy --workspace --all-targets --all-features -- -D warnings

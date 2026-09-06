@@ -1,0 +1,13 @@
+target/
+.git/
+.github/
+.gitlab-ci.yml
+.githooks/
+.idea/
+.vscode/
+**/*.rs.bk
+.env
+.env.*
+config.yaml
+docs/
+*.md

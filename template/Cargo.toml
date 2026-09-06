@@ -1,0 +1,170 @@
+[package]
+name = "{{project-name}}"
+description = "{{description}}"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+{% if license != "none" %}license.workspace = true
+{% endif %}publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+{% if layout == "workspace" %}# Domain crates
+{{project-name}}-core = { workspace = true }
+
+{% endif %}# CLI
+clap = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+{% if server %}
+# HTTP
+axum = { workspace = true }
+{% endif %}
+# Configuration
+config = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Errors + logging
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+{% if server %}
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+{% endif %}
+[build-dependencies]
+built = { workspace = true }
+
+[[bin]]
+name = "{{project-name}}"
+path = "src/main.rs"
+
+# ---------------------------------------------------------------------------
+# Workspace
+# ---------------------------------------------------------------------------
+[workspace]
+resolver = "3"
+{% if layout == "workspace" %}members = ["crates/*"]
+{% endif %}
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+authors = ["{{authors}}"]
+{% if license != "none" %}license = "{{license}}"
+{% endif %}
+# Single source of truth for versions; every crate refers to these with
+# `{ workspace = true }`. Unused entries cost nothing — a crate is only compiled
+# when something depends on it.
+[workspace.dependencies]
+{% if layout == "workspace" %}
+# --- Local crates ---
+# Domain lives in `crates/`, composition in `src/`. Rename `core` to whatever
+# this project's domain actually is, and add siblings next to it.
+{{project-name}}-core = { path = "crates/core" }
+{% endif %}
+# --- CLI ---
+clap = { version = "4", default-features = false, features = [
+    "std",
+    "derive",
+    "help",
+    "usage",
+    "error-context",
+] }
+
+# --- Async runtime ---
+tokio = { version = "1", default-features = false, features = [
+    "macros",
+    "net",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+] }
+# Hierarchical graceful shutdown, once there is more than one loop to stop.
+tokio-util = { version = "0.7", default-features = false }
+{% if server %}
+# --- HTTP ---
+axum = { version = "0.8", default-features = false, features = [
+    "http1",
+    "json",
+    "query",
+    "tokio",
+    "tracing",
+] }
+tower = { version = "0.5", default-features = false }
+{% endif %}
+# --- Configuration + serde ---
+config = { version = "0.15", default-features = false, features = ["yaml"] }
+serde = { version = "1.0", default-features = false, features = [
+    "derive",
+    "std",
+] }
+serde_yaml = { version = "0.9", default-features = false }
+# Human-friendly durations in config (`30s`, `5m`), once a section wants one.
+humantime-serde = { version = "1", default-features = false }
+
+# --- Errors ---
+# `anyhow` in the binary (context chains, one error type), `thiserror` in the
+# crates (typed, matchable variants). Never the other way round.
+anyhow = { version = "1", default-features = false, features = ["std"] }
+thiserror = { version = "2", default-features = false, features = ["std"] }
+
+# --- Logging ---
+tracing = { version = "0.1", default-features = false, features = [
+    "std",
+    "attributes",
+] }
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "ansi",
+    "env-filter",
+    "fmt",
+    "json",
+    "registry",
+    "std",
+] }
+
+# --- Build metadata ---
+built = { version = "0.8", default-features = false, features = ["git2"] }
+
+# ---------------------------------------------------------------------------
+# Lints (inherited by every crate via `[lints] workspace = true`)
+# ---------------------------------------------------------------------------
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+cast_possible_truncation = "deny"
+cast_sign_loss = "deny"
+wildcard_imports = "deny"
+needless_return = "deny"
+semicolon_if_nothing_returned = "deny"
+manual_flatten = "deny"
+explicit_into_iter_loop = "deny"
+cognitive_complexity = "warn"
+needless_pass_by_value = "warn"
+redundant_clone = "warn"
+needless_collect = "warn"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+# ---------------------------------------------------------------------------
+# Profiles
+# ---------------------------------------------------------------------------
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"

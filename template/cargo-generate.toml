@@ -1,0 +1,56 @@
+# The wizard. `cargo generate --git <this repo>` reads this file, asks the
+# questions below, then renders `template/` with the answers.
+
+[template]
+cargo_generate_version = ">=0.22.0"
+# GitHub Actions expressions use `${{ ... }}` — the same delimiters liquid
+# does. These files are copied verbatim so the expressions survive.
+exclude = [".github/workflows/**"]
+
+[placeholders]
+
+[placeholders.description]
+type = "string"
+prompt = "One line — what does it do?"
+default = "A Rust service"
+
+[placeholders.layout]
+type = "string"
+prompt = "Layout"
+choices = ["workspace", "single"]
+default = "workspace"
+
+[placeholders.server]
+type = "bool"
+prompt = "HTTP server (axum, health/ready probes, graceful shutdown)?"
+default = true
+
+[placeholders.license]
+type = "string"
+prompt = "License"
+choices = ["MIT", "Apache-2.0", "MIT OR Apache-2.0", "none"]
+default = "MIT"
+
+[placeholders.ci]
+type = "string"
+prompt = "CI"
+choices = ["github", "gitlab", "none"]
+default = "github"
+
+[placeholders.docker]
+type = "bool"
+prompt = "Multi-stage Dockerfile (cargo-chef) + .dockerignore?"
+default = true
+
+[placeholders.githooks]
+type = "bool"
+prompt = "Pre-commit hook (fmt + clippy)?"
+default = true
+
+[placeholders.claude]
+type = "bool"
+prompt = "CLAUDE.md + docs/design/ scaffold?"
+default = true
+
+[hooks]
+post = ["post-script.rhai"]

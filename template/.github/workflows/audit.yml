@@ -1,0 +1,24 @@
+name: Audit
+
+on:
+  push:
+    branches: [main]
+    paths: ["**/Cargo.toml", "**/Cargo.lock", ".github/workflows/audit.yml"]
+  pull_request:
+    paths: ["**/Cargo.toml", "**/Cargo.lock", ".github/workflows/audit.yml"]
+  # An advisory lands against code that has not changed, so a dependency edit is
+  # not the only thing worth checking on.
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Prebuilt binary, so no five-minute `cargo install`.
+      - uses: taiki-e/install-action@cargo-audit
+      # Fails on a vulnerability. Add `--deny warnings` to fail on unmaintained
+      # and yanked crates too, once the tree is clean enough to hold that line.
+      - run: cargo audit

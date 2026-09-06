@@ -1,0 +1,164 @@
+stages:
+  - check
+{% if docker %}  - docker
+{% endif %}
+variables:
+  CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+  CARGO_TERM_COLOR: "always"
+  # Bump in one place. Keep it in step with `rust-version` in Cargo.toml{% if docker %} and
+  # the Dockerfile's RUST_VERSION{% endif %}.
+  RUST_VERSION: "1.90"
+  # Cache compilation through sccache instead of the whole target/ dir. sccache
+  # stores a flat object cache (few large files) that archives and extracts in
+  # seconds, where target/'s hundreds of thousands of tiny files cost minutes
+  # per job just to pack and unpack.
+  SCCACHE_VERSION: "0.8.2"
+  RUSTC_WRAPPER: "sccache"
+  SCCACHE_DIR: "$CI_PROJECT_DIR/.sccache"
+  SCCACHE_CACHE_SIZE: "5G"
+  CARGO_INCREMENTAL: "0"  # incremental artifacts aren't shared by sccache
+  FF_USE_FASTZIP: "true"
+  CACHE_COMPRESSION_LEVEL: "fastest"
+
+.cargo-cache: &cargo-cache
+  # Keyed on the toolchain, not on Cargo.lock. Both the registry and sccache are
+  # content-addressed and purely additive, so entries from an older lockfile stay
+  # valid — keying on it bought nothing and guaranteed a cold start on every
+  # dependency change, which is every MR that adds a crate. sccache evicts itself
+  # at SCCACHE_CACHE_SIZE. Still per job: compile modes differ per subcommand, so
+  # they keep separate caches and never race on a write.
+  key: "$CI_JOB_NAME-rust$RUST_VERSION"
+  # Uploaded even when the job fails. The default is `on_success`, which meant a
+  # red job cached nothing and the next run recompiled from scratch — so a job
+  # that was broken for any reason stayed slow until it went green. Everything
+  # cached here is content-addressed, so a partial build's entries are still
+  # valid.
+  when: always
+  paths:
+    - .cargo/registry/index/
+    - .cargo/registry/cache/
+    - .cargo/git/db/
+    - .sccache/
+
+default:
+  image: "rust:$RUST_VERSION-bookworm"
+  interruptible: true
+  before_script:
+    # The rust image ships a minimal-profile toolchain, without either of these.
+    - rustup component add clippy rustfmt
+    - |
+      curl -fsSL "https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+        | tar -xz -C /tmp
+      install "/tmp/sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl/sccache" /usr/local/bin/sccache
+  after_script:
+    - command -v sccache >/dev/null 2>&1 && sccache --show-stats || true
+  cache:
+    <<: *cargo-cache
+    policy: pull-push
+
+# Run on MRs, on the default branch, and on tags.
+.rules: &rules
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'
+
+# All four checks run concurrently in a single stage (no inter-job dependency),
+# so wall-clock is the slowest single check, not their sum.
+fmt:
+  stage: check
+  <<: *rules
+  cache: []  # only needs rustfmt, no compilation
+  before_script:
+    - rustup component add rustfmt
+  variables:
+    RUSTC_WRAPPER: ""
+  script:
+    - cargo fmt --all -- --check
+
+clippy:
+  stage: check
+  <<: *rules
+  script:
+    - cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+doc:
+  stage: check
+  <<: *rules
+  variables:
+    RUSTDOCFLAGS: "-D warnings"
+  # `missing_docs` warns and this turns warnings into errors, so every public
+  # item needs a doc comment.
+  script:
+    - cargo doc --workspace --no-deps --all-features --locked
+
+test:
+  stage: check
+  <<: *rules
+  script:
+    - cargo test --workspace --all-features --locked
+
+# Advisories against the dependency tree. `cargo audit` compiles nothing of
+# ours, so it keeps its own cache — the binary and the advisory registry, not
+# object files.
+audit:
+  stage: check
+  <<: *rules
+  variables:
+    RUSTC_WRAPPER: ""
+  cache:
+    key: "audit-rust$RUST_VERSION"
+    when: always
+    paths:
+      - .cargo/bin/
+      - .cargo/registry/index/
+      - .cargo/registry/cache/
+  before_script:
+    - export PATH="$CARGO_HOME/bin:$PATH"
+    - command -v cargo-audit >/dev/null 2>&1 || cargo install cargo-audit --locked
+  # Fails on a vulnerability. Add `--deny warnings` to fail on unmaintained and
+  # yanked crates too, once the tree is clean enough to hold that line.
+  script:
+    - cargo audit
+{% if docker %}
+# Image build + push to the project's own container registry.
+build:
+  stage: docker
+  image: docker:27.3
+  services:
+    - name: docker:27.3-dind
+      alias: docker
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+  cache: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'
+  before_script:
+    # Wait for the dind daemon to come up before using it.
+    - |
+      for i in $(seq 1 60); do
+        docker info > /dev/null 2>&1 && break
+        echo "Waiting for Docker daemon... $i"
+        sleep 1
+      done
+      docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - export TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+    # On a tag release, also publish the `latest` floating tag.
+    - if [ -n "$CI_COMMIT_TAG" ]; then export LATEST="-t $CI_REGISTRY_IMAGE:latest"; fi
+    - docker buildx create --use --name builder
+    # A registry cache keeps dependency layers warm across pipelines.
+    - |
+      docker buildx build \
+        --platform linux/amd64 \
+        --cache-from "type=registry,ref=$CI_REGISTRY_IMAGE:cache" \
+        --cache-to   "type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max" \
+        --build-arg GIT_COMMIT="$CI_COMMIT_SHORT_SHA" \
+        -t "$CI_REGISTRY_IMAGE:$TAG" $LATEST \
+        --push \
+        .
+{% endif %}
