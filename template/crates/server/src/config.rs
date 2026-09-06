@@ -1,4 +1,4 @@
-//! HTTP server configuration section.
+//! Server configuration section, deserialized as part of the binary's config.
 
 use std::net::{Ipv4Addr, SocketAddr};
 

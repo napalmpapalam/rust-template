@@ -1,9 +1,7 @@
-//! Liveness and readiness probes.
-
 use axum::{Router, http::StatusCode, routing::get};
 
 /// Builds the probe routes: `GET /health` and `GET /ready`.
-pub fn routes() -> Router {
+pub fn probes() -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/ready", get(ready))
@@ -25,7 +23,7 @@ async fn ready() -> StatusCode {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::routes;
+    use super::probes;
 
     use axum::{
         body::Body,
@@ -34,7 +32,7 @@ mod tests {
     use tower::ServiceExt as _;
 
     async fn get(path: &str) -> StatusCode {
-        routes()
+        probes()
             .oneshot(Request::get(path).body(Body::empty()).unwrap())
             .await
             .unwrap()

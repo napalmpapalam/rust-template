@@ -25,13 +25,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: workspace-server
+          - name: service
             answers: >-
-              -d layout=workspace -d server=true -d license=MIT
+              -d server=true -d license=MIT
               -d ci=github -d docker=true -d githooks=true -d claude=true
-          - name: single-cli
+          - name: cli
             answers: >-
-              -d layout=single -d server=false -d license=none
+              -d server=false -d license=none
               -d ci=gitlab -d docker=false -d githooks=false -d claude=false
     name: generate (${{ matrix.name }})
     runs-on: ubuntu-latest
@@ -86,8 +86,8 @@ jobs:
           cd /tmp/img
           cargo generate --path "$GITHUB_WORKSPACE" template \
             --name probe --silent --vcs none \
-            -d description="Probe" -d layout=workspace -d server=true \
-            -d license=MIT -d ci=github -d docker=true -d githooks=true -d claude=true
+            -d description="Probe" -d server=true -d license=MIT \
+            -d ci=github -d docker=true -d githooks=true -d claude=true
 
       - uses: docker/build-push-action@v6
         with:

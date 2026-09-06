@@ -4,17 +4,15 @@
 
 ## Working here
 
-- **Run things directly** — `cargo run -- run`, `cargo run -- config`. Never
+- **Run things directly** — `cargo run -- run all`, `cargo run -- config`. Never
   `cargo build` then execute the artifact; the run already compiles.
 - **Before pushing:** `cargo fmt --all`, then
   `cargo clippy --workspace --all-targets --all-features -- -D warnings`, then
-  `cargo test --workspace --all-features`. That is exactly what CI runs, and
+  `cargo test --workspace --all-features`.{% if ci != "none" %} That is exactly what CI runs, and
   what `.githooks/pre-commit` runs locally. CI adds `cargo doc` under
   `-D warnings` and `cargo audit`.
 - **CI runs `--locked`**, so `Cargo.lock` is committed and a dependency bump is
-  a deliberate edit, never a silent one.
-- **Read [docs/design/README.md](docs/design/README.md) before changing a
-  domain** — how each part works and why, one file per domain.
+  a deliberate edit, never a silent one.{% endif %}
 
 ## Constraints that bite
 
@@ -30,33 +28,27 @@
   on. Never the other way round.
 - **Config is `deny_unknown_fields`** — a typo in a key fails the process at
   boot instead of silently doing nothing.
+- **A surface that returns takes the process with it.** `run/serve.rs` cancels
+  the shared token on the first exit, so nothing is left running alone.
 
 ## Layout
 
-{% if layout == "workspace" %}Domain lives in `crates/`, composition in `src/`.
+Domain lives in `crates/`, composition in `src/`.
 
 | Path | Role |
 | --- | --- |
-| `crates/core` | The vocabulary — validated types, no I/O. Rename it to the domain, add siblings. |
-| `src/main.rs` | Thin entry point; everything testable lives in the library. |
+{% if server %}| `crates/server` | The HTTP surface: listener, probes, `ServerConfig`, shutdown. |
+{% endif %}| `src/main.rs` | Thin entry point; everything testable lives in the library. |
 | `src/cli/` | Argument parsing and one module per subcommand. |
+| `src/cli/run/serve.rs` | The composition root — which surfaces a shape starts, and what stops them. |
 | `src/config/` | One file per section. Loading order and env-var mapping in `load.rs`. |
-{% if server %}| `src/server.rs` | Binds the socket, serves until the shutdown signal fires. |
-| `src/status.rs` | Health and readiness probes. |
-{% endif %}| `src/version.rs` | Build-time metadata from `build.rs`. |
+| `src/worker.rs` | An example background loop. Replace the body; keep the shape. |
+| `src/version.rs` | Build-time metadata from `build.rs`. |
 
 Every crate's dependencies come from `[workspace.dependencies]` in the root
-`Cargo.toml` with `{ workspace = true }`, and its lints from `[lints] workspace = true`.
-{% else %}| Path | Role |
-| --- | --- |
-| `src/main.rs` | Thin entry point; everything testable lives in the library. |
-| `src/cli/` | Argument parsing and one module per subcommand. |
-| `src/config/` | One file per section. Loading order and env-var mapping in `load.rs`. |
-{% if server %}| `src/server.rs` | Binds the socket, serves until the shutdown signal fires. |
-| `src/status.rs` | Health and readiness probes. |
-{% endif %}| `src/version.rs` | Build-time metadata from `build.rs`. |
+`Cargo.toml` with `{ workspace = true }`, and its lints from
+`[lints] workspace = true`. A crate owns its own config section; `src/config/mod.rs`
+only names it.
 
-The root `Cargo.toml` is a workspace of one: versions live in
-`[workspace.dependencies]` and lints in `[workspace.lints]`, so adding a crate
-under `crates/` later costs one line.
-{% endif %}
+Which surface a shape runs is fixed in `cli/run/serve.rs`, never in config —
+config controls how each surface behaves, not which ones exist.

@@ -27,18 +27,12 @@ if !variable::get("githooks") {
 
 if !variable::get("claude") {
     file::delete("CLAUDE.md");
-    file::delete("docs");
     file::delete(".claude");
 }
 
-if variable::get("layout") != "workspace" {
-    file::delete("crates");
-}
-
+// The server is the one crate that ships; without it the workspace starts empty.
 if !variable::get("server") {
-    file::delete("src/server.rs");
-    file::delete("src/status.rs");
-    file::delete("src/config/server.rs");
+    file::delete("crates");
 }
 
 let name = variable::get("project-name");
@@ -46,8 +40,7 @@ print("");
 print("  " + name + " is ready.");
 print("");
 print("    cd " + name);
-print("    cp config.example.yaml config.yaml");
-print("    cargo run -- run");
+print("    cargo run -- run all");
 print("");
 print("  That first build writes Cargo.lock. Commit it — CI runs --locked.");
 print("");

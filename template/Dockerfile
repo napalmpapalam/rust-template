@@ -31,4 +31,4 @@ COPY --from=builder /app/target/release/{{project-name}} /usr/local/bin/{{projec
 USER appuser
 {% if server %}EXPOSE 8080
 {% endif %}ENTRYPOINT ["/usr/local/bin/{{project-name}}"]
-CMD ["run"]
+CMD ["run", "all"]

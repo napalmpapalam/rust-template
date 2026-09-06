@@ -38,6 +38,7 @@ pub enum Command {
     Version(VersionCmd),
 
     /// Run the service.
+    #[command(subcommand)]
     Run(RunCmd),
 
     /// Print the effective configuration (defaults, file, and env merged).
@@ -71,6 +72,10 @@ pub fn main() -> ExitCode {
 }
 
 /// Dispatches one parsed command.
+///
+/// # Errors
+///
+/// Whatever the dispatched command reports.
 pub fn execute(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Version(cmd) => cmd.execute(),
@@ -115,6 +120,14 @@ mod tests {
         Cli::try_parse_from(std::iter::once("{{project-name}}").chain(args.iter().copied()))
     }
 
+    fn run(args: &[&str]) -> RunCmd {
+        let Command::Run(cmd) = parse(args).unwrap().command else {
+            unreachable!("{args:?} is a run command")
+        };
+
+        cmd
+    }
+
     #[test]
     fn parses_version_command() {
         assert_eq!(
@@ -132,16 +145,35 @@ mod tests {
     }
 
     #[test]
-    fn parses_run_with_a_config_path() {
-        let cli = parse(&["run", "--config", "custom.yaml"]).unwrap();
-
-        assert_eq!(cli.config, Some(PathBuf::from("custom.yaml")));
-        assert_eq!(cli.command, Command::Run(RunCmd {}));
+    fn each_shape_names_what_it_runs() {
+{% if server %}        assert_eq!(run(&["run", "api"]), RunCmd::Api);
+{% endif %}        assert_eq!(run(&["run", "workers"]), RunCmd::Workers);
+        assert_eq!(run(&["run", "all"]), RunCmd::All);
     }
 
     #[test]
-    fn a_command_is_required() {
-        assert!(parse(&[]).is_err());
+    fn run_on_its_own_is_not_a_command() {
+        // No default: a pod that meant `workers` and got everything would
+        // quietly run a second copy of every other surface.
+        assert!(parse(&["run"]).is_err());
+    }
+
+    #[test]
+    fn rejects_a_second_shape() {
+        assert!(parse(&["run", "all", "workers"]).is_err());
+    }
+
+    #[test]
+    fn parses_run_with_a_config_path() {
+        let cli = parse(&["run", "all", "--config", "custom.yaml"]).unwrap();
+
+        assert_eq!(cli.config, Some(PathBuf::from("custom.yaml")));
+        assert_eq!(cli.command, Command::Run(RunCmd::All));
+    }
+
+    #[test]
+    fn rejects_a_shape_that_does_not_exist() {
+        assert!(parse(&["run", "frobnicator"]).is_err());
     }
 
     #[test]

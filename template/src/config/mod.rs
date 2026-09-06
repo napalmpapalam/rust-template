@@ -2,18 +2,18 @@
 
 mod load;
 mod log;
-{% if server %}mod server;
-{% endif %}
+mod worker;
+
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-{% if layout == "workspace" %}
-use {{crate_name}}_core::ServiceName;
+{% if server %}
+use {{crate_name}}_server::ServerConfig;
 {% endif %}
 pub use self::log::{LogConfig, LogFormat};
-{% if server %}pub use self::server::ServerConfig;
-{% endif %}
+pub use self::worker::WorkerConfig;
+
 /// Env var naming the config file, when the `--config` flag is absent.
 const CONFIG_PATH_ENV: &str = "{{crate_name | upcase}}_CONFIG";
 
@@ -21,16 +21,20 @@ const CONFIG_PATH_ENV: &str = "{{crate_name | upcase}}_CONFIG";
 const ENV_PREFIX: &str = "{{crate_name | upcase}}";
 
 /// Every configurable knob, merged from all sources.
+///
+/// A section belongs to whichever crate owns the thing it configures — the
+/// server's lives in the server crate — and this struct only names them, so a
+/// section and its code never drift apart.
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields, default)]
 pub struct Config {
-    /// The identity this process reports as, in logs and to its peers.
-    pub name: {% if layout == "workspace" %}ServiceName{% else %}String{% endif %},
     /// Logging section.
     pub log: LogConfig,
 {% if server %}    /// Where the HTTP server binds.
     pub server: ServerConfig,
-{% endif %}}
+{% endif %}    /// How the background workers are paced.
+    pub worker: WorkerConfig,
+}
 
 impl Config {
     /// Loads the configuration from the path [`Self::resolve_path`] picks.
@@ -82,6 +86,13 @@ mod tests {
         let config = from_env(&[("{{crate_name | upcase}}__LOG__FILTER", "debug")]).unwrap();
 
         assert_eq!(config.log.filter, "debug");
+    }
+
+    #[test]
+    fn a_duration_reads_as_a_human_writes_it() {
+        let config = from_env(&[("{{crate_name | upcase}}__WORKER__INTERVAL", "90s")]).unwrap();
+
+        assert_eq!(config.worker.interval.as_secs(), 90);
     }
 
     #[test]

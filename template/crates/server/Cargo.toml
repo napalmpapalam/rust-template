@@ -1,0 +1,23 @@
+[package]
+name = "{{project-name}}-server"
+description = "The HTTP surface of {{project-name}}: listener, probes, shutdown"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+{% if license != "none" %}license.workspace = true
+{% endif %}publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+axum = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }

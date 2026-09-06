@@ -12,20 +12,19 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
-{% if layout == "workspace" %}# Domain crates
-{{project-name}}-core = { workspace = true }
+{% if server %}# Domain crates
+{{project-name}}-server = { workspace = true }
 
 {% endif %}# CLI
 clap = { workspace = true }
 
 # Async runtime
 tokio = { workspace = true }
-{% if server %}
-# HTTP
-axum = { workspace = true }
-{% endif %}
+tokio-util = { workspace = true }
+
 # Configuration
 config = { workspace = true }
+humantime-serde = { workspace = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
 
@@ -33,10 +32,7 @@ serde_yaml = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-{% if server %}
-[dev-dependencies]
-tower = { workspace = true, features = ["util"] }
-{% endif %}
+
 [build-dependencies]
 built = { workspace = true }
 
@@ -49,7 +45,10 @@ path = "src/main.rs"
 # ---------------------------------------------------------------------------
 [workspace]
 resolver = "3"
-{% if layout == "workspace" %}members = ["crates/*"]
+{% if server %}members = ["crates/*"]
+{% else %}# Domain crates go under `crates/`; add `members = ["crates/*"]` with the first
+# one. Until then this is a workspace of one, and the tables below are already
+# the single source of truth for versions and lints.
 {% endif %}
 [workspace.package]
 version = "0.1.0"
@@ -62,11 +61,11 @@ authors = ["{{authors}}"]
 # `{ workspace = true }`. Unused entries cost nothing — a crate is only compiled
 # when something depends on it.
 [workspace.dependencies]
-{% if layout == "workspace" %}
+{% if server %}
 # --- Local crates ---
-# Domain lives in `crates/`, composition in `src/`. Rename `core` to whatever
-# this project's domain actually is, and add siblings next to it.
-{{project-name}}-core = { path = "crates/core" }
+# Domain lives in `crates/`, composition in `src/`. A crate owns its own config
+# section, so the section and the code it configures never drift apart.
+{{project-name}}-server = { path = "crates/server" }
 {% endif %}
 # --- CLI ---
 clap = { version = "4", default-features = false, features = [
@@ -86,7 +85,8 @@ tokio = { version = "1", default-features = false, features = [
     "sync",
     "time",
 ] }
-# Hierarchical graceful shutdown, once there is more than one loop to stop.
+# `CancellationToken`: one token, cloned into every surface, is the whole
+# graceful-shutdown contract.
 tokio-util = { version = "0.7", default-features = false }
 {% if server %}
 # --- HTTP ---
@@ -106,7 +106,7 @@ serde = { version = "1.0", default-features = false, features = [
     "std",
 ] }
 serde_yaml = { version = "0.9", default-features = false }
-# Human-friendly durations in config (`30s`, `5m`), once a section wants one.
+# Human-friendly durations in config (`30s`, `5m`).
 humantime-serde = { version = "1", default-features = false }
 
 # --- Errors ---
