@@ -19,17 +19,12 @@ and git hooks already wired together.
 ## Usage
 
 ```sh
-cargo generate --git https://github.com/napalmpapalam/rust-template template
+cargo generate --git https://github.com/napalmpapalam/rust-template
 ```
 
 > [!NOTE]
-> The trailing `template` is the subfolder this repo keeps the skeleton in, so
-> the repo root can hold its own README and CI. Leave it off and you get a
-> project with a `template/` directory inside it.
->
-> The `napalmpapalam/rust-template` shorthand works too, but cargo-generate
-> looks it up as a favorite first and warns when it finds none. `--git` skips
-> that.
+> The `napalmpapalam/rust-template` shorthand works too, but it is looked up as
+> a favorite first and warns when it finds none. `--git` skips that.
 
 Then:
 
@@ -106,7 +101,7 @@ recompiles the dependency tree, on top of a non-root `debian:bookworm-slim`.
 
 ```sh
 # generate into a scratch directory and check it
-cargo generate --path . template --name probe --silent --vcs none \
+cargo generate --path . --name probe --silent --vcs none \
   -d description="Probe" -d server=true -d license=MIT \
   -d ci=github -d docker=true -d githooks=true -d claude=true
 
@@ -115,7 +110,9 @@ cd probe && cargo clippy --workspace --all-targets -- -D warnings && cargo test 
 
 Everything the generator needs lives in `template/`: `cargo-generate.toml` holds
 the questions, `post-script.rhai` drops the files an answer turned off, and the
-rest is the skeleton. Files under `.github/workflows/` are copied verbatim rather
+rest is the skeleton. Keeping the repo root out of it is what lets this README
+and the CI below live here — cargo-generate finds `template/` on its own,
+because it is the only folder holding a `cargo-generate.toml`. Files under `.github/workflows/` are copied verbatim rather
 than rendered — GitHub Actions expressions use `${{ … }}`, the same delimiters
 liquid does.
 

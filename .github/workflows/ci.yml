@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p /tmp/out
           cd /tmp/out
-          cargo generate --path "$GITHUB_WORKSPACE" template \
+          cargo generate --path "$GITHUB_WORKSPACE" \
             --name probe --silent --vcs none \
             -d description="Probe" ${{ matrix.answers }}
 
@@ -84,7 +84,7 @@ jobs:
         run: |
           mkdir -p /tmp/img
           cd /tmp/img
-          cargo generate --path "$GITHUB_WORKSPACE" template \
+          cargo generate --path "$GITHUB_WORKSPACE" \
             --name probe --silent --vcs none \
             -d description="Probe" -d server=true -d license=MIT \
             -d ci=github -d docker=true -d githooks=true -d claude=true
