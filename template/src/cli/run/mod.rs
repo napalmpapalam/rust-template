@@ -5,8 +5,7 @@ use clap::Subcommand;
 
 use crate::config::Config;
 
-/// What this process runs. One variant per deployment shape, so a pod names
-/// exactly what it is rather than inheriting a default.
+/// What this process runs — one variant per deployment shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum RunCmd {
 {% if server %}    /// Serve the HTTP API and nothing else.
@@ -30,11 +29,11 @@ impl RunCmd {
         matches!(self, Self::Workers | Self::All)
     }
 
-    /// Starts what this shape names, and waits for it to stop.
+    /// Starts what this shape names and waits for it to stop.
     ///
     /// # Errors
     ///
-    /// The first failure any of the started surfaces reports.
+    /// The first failure any started surface reports.
     pub async fn execute(self, config: Config) -> Result<()> {
         serve::run(self, config).await
     }

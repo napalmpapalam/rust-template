@@ -14,8 +14,7 @@ async fn health() -> StatusCode {
 
 /// Answers `200` once the service can take traffic.
 ///
-/// Check the dependencies that must be up — a pool, a queue — and answer `503`
-/// until they are.
+/// Answer `503` until the dependencies that must be up — a pool, a queue — are.
 async fn ready() -> StatusCode {
     StatusCode::OK
 }

@@ -1,4 +1,4 @@
-//! Installs the global tracing subscriber from [`LogConfig`].
+//! Tracing setup.
 
 use anyhow::{Context as _, Result};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};

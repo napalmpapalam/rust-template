@@ -7,12 +7,7 @@ use crate::config::WorkerConfig;
 
 /// Ticks until `shutdown` fires.
 ///
-/// Returning is what takes the process down, so only a failure this loop cannot
-/// retry past belongs in the `Err`.
-///
-/// # Errors
-///
-/// Whatever the work inside the tick cannot recover from.
+/// Returning takes the process down, so only an unrecoverable failure is `Err`.
 pub async fn run(config: &WorkerConfig, shutdown: CancellationToken) -> Result<()> {
     let mut ticker = tokio::time::interval(config.interval);
 

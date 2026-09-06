@@ -6,9 +6,6 @@ use crate::{config::ServerConfig, error::ServerError};
 
 /// Serves `router` until `shutdown` fires, then drains what is in flight.
 ///
-/// The token is the whole shutdown contract: whoever owns the process decides
-/// when it fires, and every surface it was cloned into stops together.
-///
 /// # Errors
 ///
 /// [`ServerError::Bind`] if the address is taken, [`ServerError::Serve`] if the

@@ -2,8 +2,8 @@
 
 /// Resolves on Ctrl-C, or on SIGTERM where the platform has one.
 ///
-/// A listener that cannot be installed pends forever rather than resolving:
-/// returning immediately would shut the process down the moment it started.
+/// A listener that cannot be installed pends forever — resolving would stop the
+/// process the moment it started.
 pub async fn shutdown() {
     let interrupt = async {
         if let Err(err) = tokio::signal::ctrl_c().await {

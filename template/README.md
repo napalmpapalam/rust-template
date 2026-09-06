@@ -2,17 +2,30 @@
 
 {{description}}
 
+## Prerequisites
+
+- **Rust 1.90+** — [rustup.rs](https://rustup.rs)
+{% if docker %}- **Docker** — for the container build only, [docs.docker.com](https://docs.docker.com/get-docker/)
+{% endif %}
 ## Quick start
 
 ```sh
-cargo run -- run all
+cargo run -- config     # the merged configuration, as YAML
+cargo run -- run all    # every surface, until Ctrl-C or SIGTERM
 ```
 
-Every setting has a default, so no config file is needed to boot. Copy
-[config.example.yaml](config.example.yaml) to `config.yaml` when you need to
-change one.
-{% if githooks %}
-Turn the hooks on once, so `fmt` and `clippy` run before every commit:
+Every setting has a default, so nothing needs configuring to boot. Copy
+[config.example.yaml](config.example.yaml) to `config.yaml` to change one.
+{% if server %}
+### Verify
+
+```sh
+curl localhost:8080/health   # 200
+```
+{% endif %}{% if githooks %}
+### Hooks
+
+Turn them on once, so `fmt` and `clippy` run before every commit:
 
 ```sh
 git config core.hooksPath .githooks
@@ -28,13 +41,12 @@ git config core.hooksPath .githooks
 | `{{project-name}} config` | Prints the effective configuration as YAML. |
 | `{{project-name}} version` | Prints version and git commit. |
 
-`run` on its own is not a command: a pod that meant `workers` and got everything
-would quietly run a second copy of every other surface. `--config <path>`
-overrides where the config file is read from.
+`--config <path>` overrides where the config file is read from.
 
-One `CancellationToken` stops every surface a shape started. Whichever comes
-first — a signal, or the first surface to return — cancels the rest, so the
-process never lingers half-alive.
+`run` on its own is not a command: a pod that meant `workers` and got everything
+would quietly run a second copy of every other surface. Whichever comes first — a
+signal, or the first surface to return — stops the rest, so the process never
+lingers half-alive.
 {% if server %}
 ## Routes
 
@@ -61,19 +73,19 @@ separator:
 Unknown keys are refused at boot, so a typo fails loudly instead of doing
 nothing.
 
-Each section belongs to whichever crate owns the thing it configures{% if server %} — `ServerConfig` lives in `crates/server` and the binary only names it{% endif %}, so a
-section and its code never drift apart.
-
 ## Layout
 
 | Path | Role |
 | --- | --- |
 {% if server %}| `crates/server` | The HTTP surface: listener, probes, `ServerConfig`, shutdown. |
 {% endif %}| `src/main.rs` | Thin entry point; everything testable lives in the library. |
-| `src/cli/` | Argument parsing and one module per subcommand. `run/serve.rs` is the composition root — it decides which surfaces a shape starts. |
+| `src/cli/` | Argument parsing and one module per subcommand. `run/serve.rs` decides which surfaces a shape starts. |
 | `src/config/` | One file per section. Loading order and env-var mapping in `load.rs`. |
 | `src/worker.rs` | An example background loop. Replace the body; keep the shape. |
 | `src/signal.rs` | Ctrl-C and SIGTERM, the only things that end the process. |
+
+A section lives in the crate that owns what it configures{% if server %} — `ServerConfig` in
+`crates/server`{% endif %}, so it never drifts from the code it configures.
 
 ## Development
 

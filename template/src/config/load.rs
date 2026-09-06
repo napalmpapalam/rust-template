@@ -19,10 +19,6 @@ pub(super) fn load<T: DeserializeOwned>(path: Option<&Path>, env_prefix: &str) -
 }
 
 /// Same as [`load`], with an injectable env source so tests stay hermetic.
-///
-/// # Errors
-///
-/// As [`load`].
 pub(super) fn load_with_env<T: DeserializeOwned>(
     path: Option<&Path>,
     env_prefix: &str,

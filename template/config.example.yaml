@@ -1,40 +1,24 @@
 # Example configuration for {{project-name}}.
 #
-# Copy to ./config.yaml, or pass it with `--config ./config.yaml`, or point at
-# it with the {{crate_name | upcase}}_CONFIG env var.
+# Copy to ./config.yaml, or point at it with {{crate_name | upcase}}_CONFIG.
+# Every value here is a default, so an empty file boots — uncomment only what
+# you change.
 #
-# Every value below is a default, so an empty file boots and everything here is
-# commented out. Uncomment only what you actually change — a file that repeats
-# the defaults hides which settings this deployment really depends on.
+# Env vars override the file, `__` separating the nesting:
+# {{crate_name | upcase}}__LOG__FORMAT=json. An unknown key fails at boot.
 #
-# Env var overrides use the prefix {{crate_name | upcase}}__ with __ as the
-# nesting separator, and win over this file:
-#   {{crate_name | upcase}}__LOG__FORMAT=json
-{% if server %}#   {{crate_name | upcase}}__SERVER__BIND_ADDR=0.0.0.0:9000
-{% endif %}#   {{crate_name | upcase}}__WORKER__INTERVAL=5m
-#
-# An unknown key fails the process at boot rather than doing nothing, so a typo
-# here is loud.
-#
-# Tip: `{{project-name}} config` prints the effective merged configuration.
+# `{{project-name}} config` prints what the layers merged to.
 
 # log:
-#   # Tracing filter directives.
-#   #
-#   # Examples:
-#   #   "info"
-#   #   "info,{{crate_name}}=debug"
-#   #
-#   # Valid levels: trace, debug, info, warn, error, off.
+#   # Tracing directives: "info", or "info,{{crate_name}}=debug".
 #   filter: "info"
 #
 #   # "text" for humans, "json" for log collectors.
 #   format: "text"
 {% if server %}
 # server:
-#   # Address and port the HTTP server binds.
 #   bind_addr: "0.0.0.0:8080"
 {% endif %}
 # worker:
-#   # Wait between ticks, written the way a human would: 30s, 5m.
+#   # Wait between ticks: 30s, 5m.
 #   interval: "30s"

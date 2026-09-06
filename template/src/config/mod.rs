@@ -22,9 +22,8 @@ const ENV_PREFIX: &str = "{{crate_name | upcase}}";
 
 /// Every configurable knob, merged from all sources.
 ///
-/// A section belongs to whichever crate owns the thing it configures — the
-/// server's lives in the server crate — and this struct only names them, so a
-/// section and its code never drift apart.
+/// A section lives in the crate that owns what it configures; this only names
+/// them.
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields, default)]
 pub struct Config {

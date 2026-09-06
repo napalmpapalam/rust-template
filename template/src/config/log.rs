@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Logging configuration.
+/// Filter and format for the global subscriber.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields, default)]
 pub struct LogConfig {

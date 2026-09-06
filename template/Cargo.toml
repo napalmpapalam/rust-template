@@ -46,9 +46,8 @@ path = "src/main.rs"
 [workspace]
 resolver = "3"
 {% if server %}members = ["crates/*"]
-{% else %}# Domain crates go under `crates/`; add `members = ["crates/*"]` with the first
-# one. Until then this is a workspace of one, and the tables below are already
-# the single source of truth for versions and lints.
+{% else %}# A workspace of one: add `members = ["crates/*"]` with the first crate under
+# `crates/`. The tables below already apply.
 {% endif %}
 [workspace.package]
 version = "0.1.0"
@@ -63,8 +62,7 @@ authors = ["{{authors}}"]
 [workspace.dependencies]
 {% if server %}
 # --- Local crates ---
-# Domain lives in `crates/`, composition in `src/`. A crate owns its own config
-# section, so the section and the code it configures never drift apart.
+# Domain lives in `crates/`, composition in `src/`; a crate owns its config section.
 {{project-name}}-server = { path = "crates/server" }
 {% endif %}
 # --- CLI ---
@@ -85,8 +83,7 @@ tokio = { version = "1", default-features = false, features = [
     "sync",
     "time",
 ] }
-# `CancellationToken`: one token, cloned into every surface, is the whole
-# graceful-shutdown contract.
+# `CancellationToken`, the shutdown contract every surface is cloned into.
 tokio-util = { version = "0.7", default-features = false }
 {% if server %}
 # --- HTTP ---

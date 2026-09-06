@@ -34,11 +34,8 @@ pub(super) async fn run(cmd: RunCmd, config: Config) -> Result<()> {
     outcome
 }
 
-/// Waits for a signal, or for the first task to return — whichever comes first.
-///
-/// Either way the token fires, so every other surface stops with it: a process
-/// that lost half of what it was started for is not half-useful, it is a pod
-/// that reports healthy while doing nothing.
+/// Waits for a signal or the first task to return, then cancels the token so
+/// the rest stop with it.
 async fn supervise(tasks: &mut JoinSet<Result<()>>, shutdown: &CancellationToken) -> Result<()> {
     let first = tokio::select! {
         () = signal::shutdown() => {
@@ -57,10 +54,7 @@ async fn supervise(tasks: &mut JoinSet<Result<()>>, shutdown: &CancellationToken
     }
 }
 
-/// Gives the rest of the tasks their chance to finish after cancellation.
-///
-/// Failures here are logged, not returned: the process is already on its way
-/// down, and the first one to fall over is the one worth reporting.
+/// Lets the remaining tasks finish after cancellation, logging what they report.
 async fn drain(mut tasks: JoinSet<Result<()>>) {
     while let Some(joined) = tasks.join_next().await {
         match joined {
