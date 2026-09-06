@@ -88,6 +88,9 @@ jobs:
             --name probe --silent --vcs none \
             -d description="Probe" -d server=true -d license=MIT \
             -d ci=github -d docker=true -d githooks=true -d claude=true
+          # The image build runs `--locked`, and a real repo has the lockfile
+          # committed by the time it is built. A freshly generated one does not.
+          cd probe && cargo generate-lockfile
 
       - uses: docker/build-push-action@v6
         with:
