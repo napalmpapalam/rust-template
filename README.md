@@ -19,13 +19,17 @@ and git hooks already wired together.
 ## Usage
 
 ```sh
-cargo generate napalmpapalam/rust-template template
+cargo generate --git https://github.com/napalmpapalam/rust-template template
 ```
 
 > [!NOTE]
 > The trailing `template` is the subfolder this repo keeps the skeleton in, so
 > the repo root can hold its own README and CI. Leave it off and you get a
 > project with a `template/` directory inside it.
+>
+> The `napalmpapalam/rust-template` shorthand works too, but cargo-generate
+> looks it up as a favorite first and warns when it finds none. `--git` skips
+> that.
 
 Then:
 

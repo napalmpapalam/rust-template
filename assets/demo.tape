@@ -21,7 +21,7 @@ Enter
 Sleep 1s
 Show
 
-Type "cargo generate napalmpapalam/rust-template template"
+Type "cargo generate --git https://github.com/napalmpapalam/rust-template template"
 Sleep 800ms
 Enter
 Sleep 4s
