@@ -15,7 +15,7 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       # Prebuilt binary, so no five-minute `cargo install`.
       - uses: taiki-e/install-action@cargo-audit
