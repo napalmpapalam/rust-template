@@ -10,7 +10,6 @@ mod version;
 mod worker;
 
 /// Parses argv, dispatches, and maps the outcome to an exit code.
-#[must_use]
 pub fn run() -> ExitCode {
     cli::main()
 }
